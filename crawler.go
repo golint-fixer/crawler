@@ -1,12 +1,14 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"github.com/deckarep/golang-set"
 	"golang.org/x/net/html"
 	"log"
 	"net/http"
+	"net/url"
 	"strings"
 )
 
@@ -15,31 +17,35 @@ var chLinks mapset.Set
 var depth *int
 var result mapset.Set
 
-func linkMaker(root, curr string, l string) string {
+func linkMaker(curr string, l string) (string, error) {
 
 	log.Println("Original link", l)
+	if !strings.HasSuffix(curr, "/") {
+		curr = curr + "/"
+	}
 
-	if strings.HasPrefix(l, "http://") ||
-		(strings.HasPrefix(l, "https://")) {
-		log.Println("Fixed link", l)
-		return l
+	if v, verr := url.Parse(curr); verr == nil {
+
+		if u, err := v.Parse(l); err == nil {
+			return u.String(), nil
+		}
 	}
-	if strings.HasPrefix(l, "/") {
-		log.Println("Fixed link", root+l)
-		return (root + l)
-	} else {
-		log.Println("Fixed link", curr+"/"+l)
-		return (curr + "/" + l)
-	}
+	return "", errors.New("no url")
 
 }
 
-func htmlParser(root, curr string, cdepth int) {
+func htmlParser(curr string, cdepth int) {
 
 	log.Println("Start parsing", curr)
+	var resp *http.Response
 
 	//make reguest
-	resp, _ := http.Get(curr)
+	if xresp, err := http.Get(curr); err != nil {
+		log.Println("Bad url", curr, err)
+		return
+	} else {
+		resp = xresp
+	}
 	defer resp.Body.Close()
 
 	//return new html tokenizer for the given Reader
@@ -67,14 +73,15 @@ func htmlParser(root, curr string, cdepth int) {
 					k, v, mattr = tz.TagAttr()
 				}
 				if string(k) == "href" {
-					newlink := linkMaker(root, curr, string(v))
-					result.Add(newlink)
+					newlink, err := linkMaker(curr, string(v))
+					if err == nil {
+						log.Println("Fixed link ", newlink)
+						result.Add(newlink)
+					} else {
+						log.Println("Bad link")
+					}
 					if cdepth < *depth && chLinks.Add(newlink) {
-						if strings.HasPrefix(newlink, root) {
-							htmlParser(root, newlink, cdepth+1)
-						} else {
-							htmlParser(curr, newlink, cdepth+1)
-						}
+						htmlParser(newlink, cdepth+1)
 					}
 				}
 			}
@@ -97,7 +104,7 @@ func main() {
 	log.Println(*depth)
 
 	chLinks.Add(*adr)
-	htmlParser(*adr, *adr, 0)
+	htmlParser(*adr, 0)
 
 	log.Println("print links")
 	for val := range result.Iter() {
