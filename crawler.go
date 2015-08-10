@@ -17,30 +17,27 @@ var chLinks mapset.Set
 var depth *int
 var result mapset.Set
 
-func linkMaker(curr string, l string) (string, error) {
+func linkMaker(curr *url.URL, l string) (*url.URL, error) {
 
 	log.Println("Original link", l)
-	if !strings.HasSuffix(curr, "/") {
-		curr = curr + "/"
+	if !strings.HasSuffix(curr.Path, "/") {
+		curr.Path += "/"
 	}
 
-	if v, verr := url.Parse(curr); verr == nil {
-
-		if u, err := v.Parse(l); err == nil {
-			return u.String(), nil
-		}
+	if u, err := curr.Parse(l); err == nil {
+		return u, nil
+	} else {
+		return nil, errors.New("Bad link")
 	}
-	return "", errors.New("no url")
-
 }
 
-func htmlParser(curr string, cdepth int) {
+func htmlParser(curr *url.URL, cdepth int) {
 
 	log.Println("Start parsing", curr)
 	var resp *http.Response
 
 	//make reguest
-	if xresp, err := http.Get(curr); err != nil {
+	if xresp, err := http.Get(curr.String()); err != nil {
 		log.Println("Bad url", curr, err)
 		return
 	} else {
@@ -58,7 +55,7 @@ func htmlParser(curr string, cdepth int) {
 		// End of the document or error
 		case html.ErrorToken:
 			log.Println("End of document or error on the page ",
-				curr)
+				curr.String())
 			return
 		case html.StartTagToken, html.SelfClosingTagToken:
 			tag, _ := tz.TagName()
@@ -73,15 +70,17 @@ func htmlParser(curr string, cdepth int) {
 					k, v, mattr = tz.TagAttr()
 				}
 				if string(k) == "href" {
-					newlink, err := linkMaker(curr, string(v))
-					if err == nil {
-						log.Println("Fixed link ", newlink)
+					if newlink, err := linkMaker(curr, string(v)); err == nil {
+						log.Println("Fixed link", newlink)
 						result.Add(newlink)
+						if cdepth < *depth && chLinks.Add(newlink.String()) {
+							log.Println("crawled list", chLinks)
+							htmlParser(newlink, cdepth+1)
+						} else {
+							log.Println("Already crawled", newlink)
+						}
 					} else {
-						log.Println("Bad link")
-					}
-					if cdepth < *depth && chLinks.Add(newlink) {
-						htmlParser(newlink, cdepth+1)
+						log.Println(err)
 					}
 				}
 			}
@@ -100,15 +99,18 @@ func main() {
 	var adr = flag.String("url", "http://xmpp.org", "http address")
 	depth = flag.Int("depth", 5, "depth of searching")
 	flag.Parse()
-	log.Println("get properties from command line")
-	log.Println(*depth)
+	log.Println("get properties from command line", *adr, *depth)
+	u, err := url.Parse(*adr)
+	if err != nil {
+		log.Println("Bad link", err)
+	} else {
+		chLinks.Add(u.String())
+		htmlParser(u, 0)
 
-	chLinks.Add(*adr)
-	htmlParser(*adr, 0)
-
-	log.Println("print links")
-	for val := range result.Iter() {
-		fmt.Println(val)
+		log.Println("print links")
+		for val := range result.Iter() {
+			fmt.Println(val)
+		}
 	}
 
 }
