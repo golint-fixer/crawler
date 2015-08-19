@@ -1,7 +1,6 @@
 package main
 
 import (
-	"errors"
 	"flag"
 	"fmt"
 	"github.com/deckarep/golang-set"
@@ -15,6 +14,7 @@ import (
 //Links that checked or started to check
 var chLinks mapset.Set
 var depth *int
+var search *int
 var result mapset.Set
 
 func linkMaker(curr *url.URL, l string) (*url.URL, error) {
@@ -27,7 +27,7 @@ func linkMaker(curr *url.URL, l string) (*url.URL, error) {
 	if u, err := curr.Parse(l); err == nil {
 		return u, nil
 	} else {
-		return nil, errors.New("Bad link")
+		return nil, err
 	}
 }
 
@@ -55,7 +55,7 @@ func htmlParser(curr *url.URL, cdepth int) {
 		// End of the document or error
 		case html.ErrorToken:
 			log.Println("End of document or error on the page ",
-				curr.String())
+				curr)
 			return
 		case html.StartTagToken, html.SelfClosingTagToken:
 			tag, _ := tz.TagName()
@@ -72,9 +72,11 @@ func htmlParser(curr *url.URL, cdepth int) {
 				if string(k) == "href" {
 					if newlink, err := linkMaker(curr, string(v)); err == nil {
 						log.Println("Fixed link", newlink)
-						result.Add(newlink)
+						if curr.Host != newlink.Host && *search == 0 {
+							return
+						}
+						result.Add(newlink.String())
 						if cdepth < *depth && chLinks.Add(newlink.String()) {
-							log.Println("crawled list", chLinks)
 							htmlParser(newlink, cdepth+1)
 						} else {
 							log.Println("Already crawled", newlink)
@@ -98,8 +100,9 @@ func main() {
 	log.SetFlags(log.Lshortfile)
 	var adr = flag.String("url", "http://xmpp.org", "http address")
 	depth = flag.Int("depth", 5, "depth of searching")
+	search = flag.Int("search", 1, "0 - search in the same hostname, 1 - in all")
 	flag.Parse()
-	log.Println("get properties from command line", *adr, *depth)
+	log.Println("get properties from command line", *adr, *depth, *search)
 	u, err := url.Parse(*adr)
 	if err != nil {
 		log.Println("Bad link", err)
