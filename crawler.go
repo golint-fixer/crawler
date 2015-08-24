@@ -9,13 +9,16 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"sync"
 )
 
 //Links that checked or started to check
 var chLinks mapset.Set
 var depth *int
-var search *int
+var search *bool
+var parallel *bool
 var result mapset.Set
+var wq sync.WaitGroup
 
 func linkMaker(curr *url.URL, l string) (*url.URL, error) {
 
@@ -32,9 +35,10 @@ func linkMaker(curr *url.URL, l string) (*url.URL, error) {
 }
 
 func htmlParser(curr *url.URL, cdepth int) {
-
 	log.Println("Start parsing", curr)
 	var resp *http.Response
+	wq.Add(1)
+	defer wq.Add(-2)
 
 	//make reguest
 	if xresp, err := http.Get(curr.String()); err != nil {
@@ -72,12 +76,17 @@ func htmlParser(curr *url.URL, cdepth int) {
 				if string(k) == "href" {
 					if newlink, err := linkMaker(curr, string(v)); err == nil {
 						log.Println("Fixed link", newlink)
-						if curr.Host != newlink.Host && *search == 0 {
-							return
+						if curr.Host != newlink.Host && !*search {
+							break
 						}
 						result.Add(newlink.String())
 						if cdepth < *depth && chLinks.Add(newlink.String()) {
-							htmlParser(newlink, cdepth+1)
+							wq.Add(1)
+							if *parallel {
+								go htmlParser(newlink, cdepth+1)
+							} else {
+								htmlParser(newlink, cdepth+1)
+							}
 						} else {
 							log.Println("Already crawled", newlink)
 						}
@@ -88,7 +97,6 @@ func htmlParser(curr *url.URL, cdepth int) {
 			}
 		}
 	}
-
 }
 
 func main() {
@@ -100,20 +108,22 @@ func main() {
 	log.SetFlags(log.Lshortfile)
 	var adr = flag.String("url", "http://xmpp.org", "http address")
 	depth = flag.Int("depth", 5, "depth of searching")
-	search = flag.Int("search", 1, "0 - search in the same hostname, 1 - in all")
+	search = flag.Bool("search", false, "search in all hostname")
+	parallel = flag.Bool("parallel", false, "perfom in parallel")
 	flag.Parse()
-	log.Println("get properties from command line", *adr, *depth, *search)
+	log.Println("get properties from command line",
+		*adr, *depth, *search, *parallel)
 	u, err := url.Parse(*adr)
 	if err != nil {
 		log.Println("Bad link", err)
 	} else {
 		chLinks.Add(u.String())
+		wq.Add(1)
 		htmlParser(u, 0)
-
+		wq.Wait()
 		log.Println("print links")
 		for val := range result.Iter() {
 			fmt.Println(val)
 		}
 	}
-
 }
