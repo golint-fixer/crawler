@@ -37,8 +37,7 @@ func linkMaker(curr *url.URL, l string) (*url.URL, error) {
 func htmlParser(curr *url.URL, cdepth int) {
 	log.Println("Start parsing", curr)
 	var resp *http.Response
-	wq.Add(1)
-	defer wq.Add(-2)
+	defer wq.Add(-1)
 
 	//make reguest
 	if xresp, err := http.Get(curr.String()); err != nil {
