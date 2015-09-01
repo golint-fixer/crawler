@@ -28,6 +28,7 @@ func linkMaker(curr *url.URL, l string) (*url.URL, error) {
 	}
 
 	if u, err := curr.Parse(l); err == nil {
+		u.Fragment = ""
 		return u, nil
 	} else {
 		return nil, err
@@ -72,7 +73,7 @@ func htmlParser(curr *url.URL, cdepth int) {
 				for mattr && string(k) != "href" {
 					k, v, mattr = tz.TagAttr()
 				}
-				if string(k) == "href" {
+				if string(k) == "href" && !strings.HasPrefix(string(v), "#") {
 					if newlink, err := linkMaker(curr, string(v)); err == nil {
 						log.Println("Fixed link", newlink)
 						if curr.Host != newlink.Host && !*search {
