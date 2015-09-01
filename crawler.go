@@ -12,13 +12,15 @@ import (
 	"sync"
 )
 
-//Links that checked or started to check
-var chLinks mapset.Set
-var depth *int
-var search *bool
-var parallel *bool
-var result mapset.Set
-var wq sync.WaitGroup
+type Crawler struct {
+	//Links that checked or started to check
+	chLinks  mapset.Set
+	result   mapset.Set
+	depth    *int
+	search   *bool
+	parallel *bool
+	wq       sync.WaitGroup
+}
 
 func linkMaker(curr *url.URL, l string) (*url.URL, error) {
 
@@ -35,10 +37,10 @@ func linkMaker(curr *url.URL, l string) (*url.URL, error) {
 	}
 }
 
-func htmlParser(curr *url.URL, cdepth int) {
+func (c *Crawler) htmlParser(curr *url.URL, cdepth int) {
 	log.Println("Start parsing", curr)
 	var resp *http.Response
-	defer wq.Add(-1)
+	defer c.wq.Add(-1)
 
 	//make reguest
 	if xresp, err := http.Get(curr.String()); err != nil {
@@ -76,16 +78,16 @@ func htmlParser(curr *url.URL, cdepth int) {
 				if string(k) == "href" && !strings.HasPrefix(string(v), "#") {
 					if newlink, err := linkMaker(curr, string(v)); err == nil {
 						log.Println("Fixed link", newlink)
-						if curr.Host != newlink.Host && !*search {
+						if curr.Host != newlink.Host && !*c.search {
 							break
 						}
-						result.Add(newlink.String())
-						if cdepth < *depth && chLinks.Add(newlink.String()) {
-							wq.Add(1)
-							if *parallel {
-								go htmlParser(newlink, cdepth+1)
+						c.result.Add(newlink.String())
+						if cdepth < *c.depth && c.chLinks.Add(newlink.String()) {
+							c.wq.Add(1)
+							if *c.parallel {
+								go c.htmlParser(newlink, cdepth+1)
 							} else {
-								htmlParser(newlink, cdepth+1)
+								c.htmlParser(newlink, cdepth+1)
 							}
 						} else {
 							log.Println("Already crawled", newlink)
@@ -100,16 +102,13 @@ func htmlParser(curr *url.URL, cdepth int) {
 }
 
 func main() {
-	chLinks = mapset.NewSet()
-	result = mapset.NewSet()
-
 	// Init values for the standart logger
 	// Lshortfile - file name and file number
 	log.SetFlags(log.Lshortfile)
 	var adr = flag.String("url", "http://xmpp.org", "http address")
-	depth = flag.Int("depth", 5, "depth of searching")
-	search = flag.Bool("search", false, "search in all hostname")
-	parallel = flag.Bool("parallel", false, "perfom in parallel")
+	var depth = flag.Int("depth", 5, "depth of searching")
+	var search = flag.Bool("search", false, "search in all hostname")
+	var parallel = flag.Bool("parallel", false, "perfom in parallel")
 	flag.Parse()
 	log.Println("get properties from command line",
 		*adr, *depth, *search, *parallel)
@@ -117,12 +116,17 @@ func main() {
 	if err != nil {
 		log.Println("Bad link", err)
 	} else {
-		chLinks.Add(u.String())
+		//Create struct Crawler
+		var wq sync.WaitGroup
 		wq.Add(1)
-		htmlParser(u, 0)
-		wq.Wait()
+		c := Crawler{mapset.NewSet(), mapset.NewSet(), depth, search, parallel,
+			wq}
+
+		c.chLinks.Add(u.String())
+		c.htmlParser(u, 0)
+		c.wq.Wait()
 		log.Println("print links")
-		for val := range result.Iter() {
+		for val := range c.result.Iter() {
 			fmt.Println(val)
 		}
 	}
