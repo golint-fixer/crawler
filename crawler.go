@@ -16,10 +16,15 @@ type Crawler struct {
 	//Links that checked or started to check
 	chLinks  mapset.Set
 	result   mapset.Set
-	depth    *int
-	search   *bool
-	parallel *bool
+	depth    int
+	search   bool
+	parallel bool
 	wq       sync.WaitGroup
+}
+
+func NewCrawler(depth int, search, parallel bool) *Crawler {
+	return &Crawler{mapset.NewSet(), mapset.NewSet(), depth, search,
+		parallel, *new(sync.WaitGroup)}
 }
 
 func linkMaker(curr *url.URL, l string) (*url.URL, error) {
@@ -78,13 +83,13 @@ func (c *Crawler) htmlParser(curr *url.URL, cdepth int) {
 				if string(k) == "href" && !strings.HasPrefix(string(v), "#") {
 					if newlink, err := linkMaker(curr, string(v)); err == nil {
 						log.Println("Fixed link", newlink)
-						if curr.Host != newlink.Host && !*c.search {
+						if curr.Host != newlink.Host && !c.search {
 							break
 						}
 						c.result.Add(newlink.String())
-						if cdepth < *c.depth && c.chLinks.Add(newlink.String()) {
+						if cdepth < c.depth && c.chLinks.Add(newlink.String()) {
 							c.wq.Add(1)
-							if *c.parallel {
+							if c.parallel {
 								go c.htmlParser(newlink, cdepth+1)
 							} else {
 								c.htmlParser(newlink, cdepth+1)
@@ -117,11 +122,8 @@ func main() {
 		log.Println("Bad link", err)
 	} else {
 		//Create struct Crawler
-		var wq sync.WaitGroup
-		wq.Add(1)
-		c := Crawler{mapset.NewSet(), mapset.NewSet(), depth, search, parallel,
-			wq}
-
+		c := NewCrawler(*depth, *search, *parallel)
+		c.wq.Add(1)
 		c.chLinks.Add(u.String())
 		c.htmlParser(u, 0)
 		c.wq.Wait()
