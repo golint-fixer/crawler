@@ -104,7 +104,7 @@ func (c *Crawler) htmlParser(curr *url.URL, cdepth int) {
 	}
 }
 
-func (c *Crawler) Crawler(url *url.URL) {
+func (c *Crawler) Crawl(url *url.URL) {
 	c.wq.Add(1)
 	c.chLinks.Add(url.String())
 	c.htmlParser(url, 0)

@@ -25,7 +25,7 @@ func main() {
 	} else {
 		//Create struct Crawler
 		c := crawler.NewCrawler(*depth, *search, *parallel)
-		c.Crawler(u)
+		c.Crawl(u)
 		log.Println("print links")
 
 		for val := range c.GetRes().Iter() {

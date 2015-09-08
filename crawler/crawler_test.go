@@ -1,4 +1,4 @@
-package main
+package crawler
 
 import (
 	"fmt"
@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"sync"
 	"testing"
 )
 
@@ -66,29 +65,22 @@ func TestHtmlParser(t *testing.T) {
 	defer ts.Close()
 
 	//Init values
-	var wq sync.WaitGroup
-	depth := new(int)
-	search := new(bool)
-	parallel := new(bool)
-	wq.Add(1)
-	*depth = 0
-	*search = true
-	*parallel = false
-
-	c := Crawler{mapset.NewSet(), mapset.NewSet(), depth, search, parallel,
-		wq}
-	c.chLinks.Add(ts.URL)
 	u, err := url.Parse(ts.URL)
 	if err != nil {
 		log.Println(err)
 	} else {
-		c.htmlParser(u, 0)
-		c.wq.Wait()
+
+		var depth = 0
+		var search = true
+		var parallel = false
+
+		c := NewCrawler(depth, search, parallel)
+		c.Crawl(u)
 		answ := mapset.NewSet()
 		for _, v := range resultlinks {
 			answ.Add(v)
 		}
-		if !answ.Equal(c.result) {
+		if !answ.Equal(c.GetRes()) {
 			t.Error("Expected links and got are not the same")
 		}
 	}
