@@ -28,7 +28,7 @@ func main() {
 		c.Crawl(u)
 		log.Println("print links")
 
-		for val := range c.GetRes().Iter() {
+		for val := range c.GetResult().Iter() {
 			fmt.Println(val)
 		}
 	}

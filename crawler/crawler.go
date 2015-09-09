@@ -21,8 +21,8 @@ type Crawler struct {
 }
 
 func NewCrawler(depth int, search, parallel bool) *Crawler {
-	return &Crawler{mapset.NewSet(), mapset.NewSet(), depth, search,
-		parallel, *new(sync.WaitGroup)}
+	return &Crawler{chLinks: mapset.NewSet(), result: mapset.NewSet(),
+		depth: depth, search: search, parallel: parallel}
 }
 
 func linkMaker(curr *url.URL, l string) (*url.URL, error) {
@@ -112,6 +112,6 @@ func (c *Crawler) Crawl(url *url.URL) {
 
 }
 
-func (c *Crawler) GetRes() mapset.Set {
+func (c *Crawler) GetResult() mapset.Set {
 	return c.result
 }

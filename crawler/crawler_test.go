@@ -80,7 +80,7 @@ func TestHtmlParser(t *testing.T) {
 		for _, v := range resultlinks {
 			answ.Add(v)
 		}
-		if !answ.Equal(c.GetRes()) {
+		if !answ.Equal(c.GetResult()) {
 			t.Error("Expected links and got are not the same")
 		}
 	}
