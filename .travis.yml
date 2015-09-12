@@ -19,4 +19,4 @@ script:
 
 branches:
     only:
-        -master
+        - master
