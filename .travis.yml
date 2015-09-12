@@ -1,4 +1,22 @@
 language: go
+sudo: false
+
 go:
     - 1.4
-script: go test -v ./crawler
+    - release
+
+install:
+    - go get golang.org/x/tools/cmd/goimports
+    - go get golang.org/x/tools/cover
+    - go get github.com/mattn/goveralls
+    - go get github.com/hailiang/gosweep
+    - go get github.com/golang/lint/golint
+script:
+    - go get -v ./...
+    - go test -v ./...
+    - ../../hailiang/gosweep/gosweep.sh
+    - $GOPATH/bin/goveralls -coverprofile=profile.cov -service=travis-ci
+
+branches:
+    only:
+        -master

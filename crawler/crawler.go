@@ -1,13 +1,14 @@
 package crawler
 
 import (
-	"github.com/deckarep/golang-set"
-	"golang.org/x/net/html"
 	"log"
 	"net/http"
 	"net/url"
 	"strings"
 	"sync"
+
+	"github.com/deckarep/golang-set"
+	"golang.org/x/net/html"
 )
 
 type Crawler struct {

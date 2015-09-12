@@ -3,9 +3,10 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/ksheremet/crawler/crawler"
 	"log"
 	"net/url"
+
+	"github.com/ksheremet/crawler/crawler"
 )
 
 func main() {
