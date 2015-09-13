@@ -2,13 +2,12 @@ package crawler
 
 import (
 	"fmt"
+	"github.com/deckarep/golang-set"
 	"log"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"testing"
-
-	"github.com/deckarep/golang-set"
 )
 
 type testpairlink struct {
@@ -56,6 +55,16 @@ func TestLinkMaker(t *testing.T) {
 			t.Error("For", pair.url, pair.u, "expected", pair.res,
 				"got", lmres.String())
 		}
+	}
+}
+
+func TestLinkMakerError(t *testing.T) {
+	clink := "http://xmpp.org"
+	nlink := "%%"
+	ur, _ := url.Parse(clink)
+	lmres, e := linkMaker(ur, nlink)
+	if e == nil {
+		t.Error("For", clink, nlink, "expected Error message, got", lmres)
 	}
 }
 
