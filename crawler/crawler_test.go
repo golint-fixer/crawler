@@ -27,6 +27,7 @@ var page = `<HTML>
 <TITLE>Your Title Here</TITLE>
 </HEAD>
 <HR>
+<a href="%%">error in link</a>
 <a href="http://somegreatsite.com">Link Name</a>
 is a link to another nifty site
 <H1>This is a Header</H1>
