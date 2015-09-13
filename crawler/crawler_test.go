@@ -2,12 +2,13 @@ package crawler
 
 import (
 	"fmt"
-	"github.com/deckarep/golang-set"
 	"log"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"testing"
+
+	"github.com/deckarep/golang-set"
 )
 
 type testpairlink struct {
