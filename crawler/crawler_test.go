@@ -28,6 +28,8 @@ var page = `<HTML>
 </HEAD>
 <HR>
 <a href="%%">error in link</a>
+<a href="#anchor">anchor in link</a>
+<a>tag a without href</a>
 <a href="http://somegreatsite.com">Link Name</a>
 is a link to another nifty site
 <H1>This is a Header</H1>
