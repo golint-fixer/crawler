@@ -100,3 +100,58 @@ func TestHtmlParser(t *testing.T) {
 		}
 	}
 }
+
+func TestHtmlParserParralel(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/test1":
+			fmt.Fprintf(w, `<a href="/test2">test2link</a>
+    <a href="/test3">test3link</a>`)
+		case "/test2":
+			fmt.Fprintf(w, `<a href="/test4">test4link</a>`)
+		case "/test3":
+			fmt.Fprintf(w, `<a href="/test5">test5link</a>`)
+		case "/test4":
+			fmt.Fprintf(w, `<a href="mailto:">test4link</a>`)
+		case "/test5":
+			fmt.Fprintf(w, `<a href="/test4">test4link</a>`)
+		}
+	}))
+
+	defer ts.Close()
+
+	//Init values
+	u, err := url.Parse(ts.URL + "/test1")
+	if err != nil {
+		log.Println(err)
+	} else {
+		result := []string{"/test2", "/test3",
+			"/test4", "/test5"}
+		var depth = 3
+		var search = true
+		var parallel = false
+
+		c := NewCrawler(depth, search, parallel)
+		c.Crawl(u)
+
+		answ := mapset.NewSet()
+		for _, v := range result {
+			answ.Add(ts.URL + v)
+		}
+		answ.Add("mailto://")
+
+		fmt.Println("Result")
+		for v := range c.GetResult().Iter() {
+			fmt.Println(v)
+		}
+
+		fmt.Println("Check with")
+		for v := range answ.Iter() {
+			fmt.Println(v)
+		}
+		if !answ.Equal(c.GetResult()) {
+			t.Error("Expected links and got are not the same")
+		}
+	}
+
+}
