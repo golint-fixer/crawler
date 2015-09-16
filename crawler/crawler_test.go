@@ -106,7 +106,7 @@ func TestHtmlParserDepth(t *testing.T) {
 		switch r.URL.Path {
 		case "/test1":
 			fmt.Fprintf(w, `<a href="/test2">test2link</a>
-    <a href="/test3">test3link</a>`)
+    		<a href="/test3">test3link</a><a href="http://xmpp.org">externlink</a>`)
 		case "/test2":
 			fmt.Fprintf(w, `<a href="/test4">test4link</a>`)
 		case "/test3":
@@ -120,7 +120,6 @@ func TestHtmlParserDepth(t *testing.T) {
 
 	defer ts.Close()
 
-	//Init values
 	u, err := url.Parse(ts.URL + "/test1")
 	if err != nil {
 		log.Println(err)
@@ -138,7 +137,76 @@ func TestHtmlParserDepth(t *testing.T) {
 		for _, v := range result {
 			answ.Add(ts.URL + v)
 		}
-		//answ.Add("mailto://")
+
+		fmt.Println("Result")
+		for v := range c.GetResult().Iter() {
+			fmt.Println(v)
+		}
+
+		fmt.Println("Check with")
+		for v := range answ.Iter() {
+			fmt.Println(v)
+		}
+		if !answ.Equal(c.GetResult()) {
+			t.Error("Expected links and got are not the same")
+		}
+	}
+
+}
+
+func TestHtmlParserSearch(t *testing.T) {
+	ts1 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/test1":
+			fmt.Fprintf(w, `<a href="/test2">test2link</a>
+    <a href="/test3">test3link</a>`)
+		case "/test2":
+			fmt.Fprintf(w, `<a href="/test4">test4link</a>`)
+		case "/test3":
+			fmt.Fprintf(w, `<a href="/test5">test5link</a>`)
+		case "/test4":
+			fmt.Fprintf(w, `<a href="mailto:">test4link</a>`)
+		case "/test5":
+			fmt.Fprintf(w, `<a href="/test4">test4link</a>`)
+		}
+	}))
+	defer ts1.Close()
+
+	ts2 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/test1":
+			fmt.Fprintf(w, `<a href="`+ts1.URL+`/test1">test2linkToTs1</a><a href="/test3">test3link</a>`)
+		case "/test2":
+			fmt.Fprintf(w, `<a href="/test1">test1link</a>`)
+		case "/test3":
+			fmt.Fprintf(w, `<a href="/test2">test2link</a>`)
+		}
+	}))
+	defer ts2.Close()
+
+	//Init values
+	u, err := url.Parse(ts2.URL + "/test1")
+	if err != nil {
+		log.Println(err)
+	} else {
+		resultTs1 := []string{"/test1", "/test2", "/test3",
+			"/test4", "/test5"}
+		resultTs2 := []string{"/test1", "/test2", "/test3"}
+		var depth = 4
+		var search = true
+		var parallel = true
+
+		c := NewCrawler(depth, search, parallel)
+		c.Crawl(u)
+
+		answ := mapset.NewSet()
+		for _, v := range resultTs1 {
+			answ.Add(ts1.URL + v)
+		}
+		for _, v := range resultTs2 {
+			answ.Add(ts2.URL + v)
+		}
+		answ.Add("mailto://")
 
 		fmt.Println("Result")
 		for v := range c.GetResult().Iter() {
