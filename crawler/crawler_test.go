@@ -101,7 +101,7 @@ func TestHtmlParser(t *testing.T) {
 	}
 }
 
-func TestHtmlParserParralel(t *testing.T) {
+func TestHtmlParserDepth(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/test1":
@@ -128,7 +128,7 @@ func TestHtmlParserParralel(t *testing.T) {
 		result := []string{"/test2", "/test3",
 			"/test4", "/test5"}
 		var depth = 3
-		var search = true
+		var search = false
 		var parallel = false
 
 		c := NewCrawler(depth, search, parallel)
@@ -138,7 +138,7 @@ func TestHtmlParserParralel(t *testing.T) {
 		for _, v := range result {
 			answ.Add(ts.URL + v)
 		}
-		answ.Add("mailto://")
+		//answ.Add("mailto://")
 
 		fmt.Println("Result")
 		for v := range c.GetResult().Iter() {
