@@ -10,7 +10,7 @@ install:
     - go get golang.org/x/tools/cover
     - go get github.com/mattn/goveralls
     - go get github.com/hailiang/gosweep
-    - go get github.com/golang/lint/golint
+    - go get golang.org/x/lint/golint
 script:
     - go get -v ./...
     - go test -v ./...
